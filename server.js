@@ -12,15 +12,49 @@ app.get("/", (req, res) => {
     res.sendFile(path.join(__dirname, "index.html"));
 });
 
+async function normalizeUrl(raw) {
+    const match = String(raw || "").match(/https?:\/\/[^\s]+/);
+    if (!match) return null;
+
+    let u = match[0].replace(/[.,;!?)]+$/, "");
+
+    try {
+        let host = new URL(u).hostname.toLowerCase();
+
+        const shortHosts = ["vm.tiktok.com", "vt.tiktok.com"];
+        const isShortPath =
+            (host === "tiktok.com" || host.endsWith(".tiktok.com")) &&
+            new URL(u).pathname.startsWith("/t/");
+
+        if (shortHosts.includes(host) || isShortPath) {
+            const r = await fetch(u, {
+                redirect: "follow",
+                headers: {
+                    "User-Agent":
+                        "Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 Chrome/120 Mobile Safari/537.36"
+                }
+            });
+            u = r.url;
+        }
+
+        const parsed = new URL(u);
+        parsed.search = "";
+        parsed.hash = "";
+        return parsed.toString();
+    } catch {
+        return u;
+    }
+}
+
 function createHandler(platform, envName) {
     return async (req, res) => {
         try {
-            const { url } = req.body;
+            const url = await normalizeUrl(req.body && req.body.url);
 
             if (!url) {
                 return res.status(400).json({
                     success: false,
-                    message: "URL wajib diisi"
+                    message: "Link tidak valid. Tempel link TikTok/Instagram yang benar."
                 });
             }
 
@@ -54,7 +88,6 @@ function createHandler(platform, envName) {
 app.post("/api/download", createHandler("tiktok", "SAVEAPI_KEY"));
 app.post("/api/instagram", createHandler("instagram", "INSTAGRAM_API_KEY"));
 
-// Jalankan listen hanya di lokal, bukan di Vercel
 if (!process.env.VERCEL) {
     const PORT = process.env.PORT || 3000;
     app.listen(PORT, () => {

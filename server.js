@@ -1,6 +1,7 @@
 const express = require("express");
 const dotenv = require("dotenv");
 const path = require("path");
+const { Readable } = require("stream");
 
 dotenv.config();
 
@@ -12,6 +13,10 @@ app.get("/", (req, res) => {
     res.sendFile(path.join(__dirname, "index.html"));
 });
 
+const UA =
+    "Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 Chrome/120 Mobile Safari/537.36";
+
+// Ambil URL dari teks, ikuti redirect link pendek/share, buang parameter tracking
 async function normalizeUrl(raw) {
     const match = String(raw || "").match(/https?:\/\/[^\s]+/);
     if (!match) return null;
@@ -19,20 +24,23 @@ async function normalizeUrl(raw) {
     let u = match[0].replace(/[.,;!?)]+$/, "");
 
     try {
-        let host = new URL(u).hostname.toLowerCase();
+        const first = new URL(u);
+        const host = first.hostname.toLowerCase();
+        const p = first.pathname;
 
-        const shortHosts = ["vm.tiktok.com", "vt.tiktok.com"];
-        const isShortPath =
-            (host === "tiktok.com" || host.endsWith(".tiktok.com")) &&
-            new URL(u).pathname.startsWith("/t/");
+        const isTikTokShort =
+            host === "vm.tiktok.com" ||
+            host === "vt.tiktok.com" ||
+            ((host === "tiktok.com" || host.endsWith(".tiktok.com")) && p.startsWith("/t/"));
 
-        if (shortHosts.includes(host) || isShortPath) {
+        const isInstaShare =
+            (host === "instagram.com" || host.endsWith(".instagram.com")) &&
+            p.startsWith("/share/");
+
+        if (isTikTokShort || isInstaShare) {
             const r = await fetch(u, {
                 redirect: "follow",
-                headers: {
-                    "User-Agent":
-                        "Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 Chrome/120 Mobile Safari/537.36"
-                }
+                headers: { "User-Agent": UA }
             });
             u = r.url;
         }
@@ -68,9 +76,7 @@ function createHandler(platform, envName) {
 
             const response = await fetch(
                 `https://api.saveapi.org/v1/${platform}?url=${encodeURIComponent(url)}`,
-                {
-                    headers: { Authorization: `Bearer ${apiKey}` }
-                }
+                { headers: { Authorization: `Bearer ${apiKey}` } }
             );
 
             const data = await response.json();
@@ -88,6 +94,41 @@ function createHandler(platform, envName) {
 app.post("/api/download", createHandler("tiktok", "SAVEAPI_KEY"));
 app.post("/api/instagram", createHandler("instagram", "INSTAGRAM_API_KEY"));
 
+// Proxy unduhan (untuk HP). Hanya domain CDN yang diizinkan.
+const ALLOWED_HOSTS = [
+    "tiktokcdn.com", "tiktokcdn-us.com", "tiktokv.com", "tiktokv.us",
+    "byteoversea.com", "ibytedtos.com", "muscdn.com",
+    "cdninstagram.com", "fbcdn.net", "saveapi.org"
+];
+
+app.get("/api/proxy", async (req, res) => {
+    try {
+        const target = new URL(String(req.query.url || ""));
+        const host = target.hostname.toLowerCase();
+        const allowed = ALLOWED_HOSTS.some(h => host === h || host.endsWith("." + h));
+
+        if (target.protocol !== "https:" || !allowed) {
+            return res.status(400).send("Host tidak diizinkan");
+        }
+
+        const upstream = await fetch(target, { headers: { "User-Agent": UA } });
+        if (!upstream.ok || !upstream.body) {
+            return res.status(502).send("Gagal mengambil file");
+        }
+
+        const name = String(req.query.name || "download").replace(/[^\w.\-]/g, "_");
+        res.setHeader("Content-Type", upstream.headers.get("content-type") || "application/octet-stream");
+        const len = upstream.headers.get("content-length");
+        if (len) res.setHeader("Content-Length", len);
+        res.setHeader("Content-Disposition", `attachment; filename="${name}"`);
+
+        Readable.fromWeb(upstream.body).pipe(res);
+    } catch {
+        res.status(400).send("URL tidak valid");
+    }
+});
+
+// listen hanya di lokal, bukan di Vercel
 if (!process.env.VERCEL) {
     const PORT = process.env.PORT || 3000;
     app.listen(PORT, () => {

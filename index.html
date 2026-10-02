@@ -1,12 +1,401 @@
 <!DOCTYPE html>
-<html>
+<html lang="id">
 
 <head>
-    <meta http-equiv="refresh" content="0; url=./public/index.html" />
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Social Downloader Pro</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&display=swap"
+        rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Bricolage Grotesque', system-ui, sans-serif;
+            background: #0a0a0a;
+        }
+
+        :focus-visible {
+            outline: 2px solid #fff;
+            outline-offset: 3px;
+        }
+
+        .rows {
+            position: fixed;
+            inset: -30%;
+            z-index: 0;
+            pointer-events: none;
+            transform: rotate(-14deg);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            gap: 28px;
+        }
+
+        .row {
+            overflow: hidden;
+            white-space: nowrap;
+        }
+
+        .track {
+            display: inline-flex;
+            align-items: center;
+            gap: 44px;
+            padding-right: 44px;
+            animation: run linear infinite;
+            will-change: transform;
+        }
+
+        .track.rev {
+            animation-direction: reverse;
+        }
+
+        .track svg {
+            width: 58px;
+            height: 58px;
+            color: rgba(255, 255, 255, .07);
+            flex: none;
+        }
+
+        .track span {
+            font-size: 76px;
+            font-weight: 800;
+            letter-spacing: -.04em;
+            color: transparent;
+            -webkit-text-stroke: 1px rgba(255, 255, 255, .08);
+        }
+
+        @keyframes run {
+            to {
+                transform: translateX(-50%);
+            }
+        }
+
+        .fade {
+            position: fixed;
+            inset: 0;
+            z-index: 0;
+            pointer-events: none;
+            background: radial-gradient(ellipse at 50% 45%, rgba(10, 10, 10, .55), #0a0a0a 85%);
+        }
+
+        .panel {
+            background: #0a0a0a;
+            border: 1px solid #3f3f46;
+            border-radius: 6px;
+        }
+
+        .tab {
+            color: #71717a;
+            border-bottom: 2px solid transparent;
+            margin-bottom: -1px;
+        }
+
+        .tab:hover {
+            color: #e4e4e7;
+        }
+
+        .tab-active {
+            color: #fff;
+            border-bottom-color: #fff;
+        }
+
+        #result-tiktok .rounded-xl,
+        #result-instagram .rounded-xl {
+            border-radius: 4px !important;
+        }
+
+        @media (prefers-reduced-motion:reduce) {
+            .track {
+                animation: none;
+            }
+        }
+    </style>
 </head>
 
-<body>
-    <p>Redirecting to <a href="./public/index.html">public/index.html</a>...</p>
+<body data-platform="tiktok" class="min-h-screen text-white relative overflow-x-hidden">
+
+    <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+        <defs>
+            <symbol id="i-tt" viewBox="0 0 24 24">
+                <path fill="currentColor"
+                    d="M12.525.02c1.31-.02 2.61-.01 3.91-.02.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.05-2.89-.35-4.2-.97-.57-.26-1.1-.59-1.62-.93-.01 2.92.01 5.84-.02 8.75-.08 1.4-.54 2.79-1.35 3.94-1.31 1.92-3.58 3.17-5.91 3.21-1.43.08-2.86-.31-4.08-1.03-2.02-1.19-3.44-3.37-3.65-5.71-.02-.5-.03-1-.01-1.49.18-1.9 1.12-3.72 2.58-4.96 1.66-1.44 3.98-2.13 6.15-1.72.02 1.48-.04 2.96-.04 4.44-.99-.32-2.15-.23-3.02.37-.63.41-1.11 1.04-1.36 1.75-.21.51-.15 1.07-.14 1.61.24 1.64 1.82 3.02 3.5 2.87 1.12-.01 2.19-.66 2.77-1.61.19-.33.4-.67.41-1.06.1-1.79.06-3.57.07-5.36.01-4.03-.01-8.05.02-12.07z" />
+            </symbol>
+            <symbol id="i-ig" viewBox="0 0 24 24">
+                <rect x="2.5" y="2.5" width="19" height="19" rx="5.5" fill="none" stroke="currentColor"
+                    stroke-width="2" />
+                <circle cx="12" cy="12" r="4.4" fill="none" stroke="currentColor" stroke-width="2" />
+                <circle cx="17.6" cy="6.4" r="1.3" fill="currentColor" />
+            </symbol>
+        </defs>
+    </svg>
+
+    <div class="fade"></div>
+
+    <div class="relative z-10 min-h-screen flex flex-col items-center px-5">
+        <main class="w-full max-w-md my-auto py-12">
+            <h1 class="text-[2.6rem] sm:text-5xl font-extrabold leading-[1.02] tracking-[-0.04em]">
+                Simpan video dari link, tanpa ribet.
+            </h1>
+            <p class="text-zinc-400 mt-4 mb-8 leading-relaxed max-w-sm">
+                Pilih TikTok atau Instagram, tempel linknya, lalu file langsung terunduh ke perangkatmu.
+            </p>
+
+            <section class="panel">
+                <div class="flex border-b border-zinc-700 px-2" role="tablist">
+                    <button type="button" id="tiktokBtn" role="tab" aria-selected="true"
+                        class="tab tab-active flex items-center gap-2 px-4 py-3.5 text-sm font-semibold transition-colors">
+                        <svg class="w-4 h-4">
+                            <use href="#i-tt" />
+                        </svg>TikTok
+                    </button>
+                    <button type="button" id="instagramBtn" role="tab" aria-selected="false"
+                        class="tab flex items-center gap-2 px-4 py-3.5 text-sm font-semibold transition-colors">
+                        <svg class="w-4 h-4">
+                            <use href="#i-ig" />
+                        </svg>Instagram
+                    </button>
+                </div>
+
+                <div class="p-4 sm:p-5">
+                    <form id="downloadForm" class="space-y-3">
+                        <div class="relative flex items-center">
+                            <input id="urlInput" type="url" required placeholder="Tempel URL TikTok di sini..."
+                                class="w-full pl-4 pr-24 py-3.5 rounded-[4px] bg-zinc-900 border border-zinc-700 text-sm placeholder-zinc-500 outline-none transition focus:border-white">
+                            <button type="button" id="pasteBtn"
+                                class="absolute right-1.5 px-3 py-2 rounded-[3px] bg-zinc-800 hover:bg-zinc-700 text-xs font-semibold text-zinc-200 transition">Tempel</button>
+                        </div>
+
+                        <button type="submit" id="submitBtn"
+                            class="w-full rounded-[4px] bg-white hover:bg-zinc-200 text-zinc-950 font-bold py-3.5 text-sm transition active:translate-y-px disabled:opacity-60 disabled:cursor-not-allowed">
+                            Cari Media
+                        </button>
+                    </form>
+
+                    <div id="result-tiktok" class="mt-4" aria-live="polite"></div>
+                    <div id="result-instagram" class="mt-4 hidden" aria-live="polite"></div>
+                </div>
+            </section>
+
+            <section class="mt-10" aria-labelledby="disclaimer-title">
+                <h2 id="disclaimer-title" class="text-sm font-bold text-white mb-3">Disclaimer</h2>
+                <div class="space-y-3 text-xs leading-relaxed text-zinc-500">
+                    <p>Social Downloader adalah tools pihak ketiga yang membantu kamu mengunduh media dari TikTok dan
+                        Instagram.</p>
+                    <p>Kami tidak berafiliasi atau terhubung secara resmi dengan TikTok, Instagram, maupun Meta. Semua
+                        konten yang kamu unduh tetap menjadi tanggung jawab pemilik konten masing-masing.</p>
+                    <p>Gunakan media yang diunduh dengan bijak dan pastikan kamu memiliki izin jika diperlukan. Jangan
+                        gunakan layanan ini untuk melanggar hak cipta, privasi, atau aturan yang berlaku.</p>
+                    <p>Kami tidak menyimpan atau mengklaim kepemilikan atas konten yang kamu unduh. Layanan ini juga
+                        dapat berubah atau tidak tersedia sewaktu-waktu karena perubahan dari platform pihak ketiga.</p>
+                    <p>Dengan menggunakan Social Downloader, kamu dianggap telah memahami dan menyetujui disclaimer ini.
+                    </p>
+                </div>
+            </section>
+        </main>
+
+        <footer
+            class="w-full max-w-md pb-6 pt-4 border-t border-zinc-800 flex flex-wrap items-center justify-between gap-2 text-xs text-zinc-500">
+            <span>&copy; <span id="yr">2026</span> Patur. Semua hak dilindungi.</span>
+            <span>Gunakan hanya untuk konten milikmu atau yang sudah diizinkan.</span>
+        </footer>
+    </div>
+
+    <script>
+        document.getElementById("yr").textContent = new Date().getFullYear();
+
+        const form = document.getElementById("downloadForm");
+        const urlInput = document.getElementById("urlInput");
+        const results = { tiktok: document.getElementById("result-tiktok"), instagram: document.getElementById("result-instagram") };
+        const savedUrl = { tiktok: "", instagram: "" };
+        const submitBtn = document.getElementById("submitBtn");
+        const pasteBtn = document.getElementById("pasteBtn");
+        const tabs = { tiktok: document.getElementById("tiktokBtn"), instagram: document.getElementById("instagramBtn") };
+        let platform = "tiktok";
+
+        function setPlatform(p) {
+            if (p === platform) return;
+            savedUrl[platform] = urlInput.value;
+            platform = p;
+            document.body.dataset.platform = p;
+            urlInput.value = savedUrl[p];
+            for (const [key, box] of Object.entries(results)) box.classList.toggle("hidden", key !== p);
+            for (const [key, el] of Object.entries(tabs)) {
+                const on = key === p;
+                el.classList.toggle("tab-active", on);
+                el.setAttribute("aria-selected", on);
+            }
+            urlInput.placeholder = `Tempel URL ${p === "tiktok" ? "TikTok" : "Instagram"} di sini...`;
+        }
+        tabs.tiktok.onclick = () => setPlatform("tiktok");
+        tabs.instagram.onclick = () => setPlatform("instagram");
+
+        pasteBtn.onclick = async () => {
+            try { urlInput.value = await navigator.clipboard.readText(); urlInput.focus(); }
+            catch { urlInput.focus(); }
+        };
+
+        const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+        const notice = (box, msg, tone = "red") => {
+            box.innerHTML = `<div class="p-4 rounded-xl bg-${tone}-500/10 border border-${tone}-500/20 text-${tone}-400 text-center text-sm font-medium">${esc(msg)}</div>`;
+        };
+
+        const spinner = `<svg class="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>`;
+
+        function extractTikTok(data) {
+            const out = [];
+            const add = (url, label, nowm) => {
+                if (typeof url === "string" && /^https?:\/\//.test(url) && !out.some(o => o.url === url))
+                    out.push({ url, label, nowm });
+            };
+
+            const list = data.formats || data.medias || data.links || data.data?.formats || [];
+            if (Array.isArray(list)) {
+                for (const f of list) {
+                    const tag = String(f.format ?? f.quality ?? f.type ?? f.label ?? "").toLowerCase();
+                    const url = f.url ?? f.link ?? f.download_url;
+                    if (/audio|mp3|music/.test(tag)) continue;
+                    const wm = /(^|[^a-z])(wm|watermark)/.test(tag) && !/nowm|no.?watermark|tanpa/.test(tag);
+                    add(url, wm ? "Dengan watermark" : (/hd|high/.test(tag) ? "Tanpa watermark HD" : "Tanpa watermark"), !wm);
+                }
+            }
+
+            const d = data.data || data;
+            add(d.hdplay, "Tanpa watermark HD", true);
+            add(d.nowm || d.no_watermark || d.play || d.video_no_watermark, "Tanpa watermark", true);
+            add(d.wmplay || d.watermark || d.video_watermark, "Dengan watermark", false);
+            add(typeof d.video === "string" ? d.video : d.video?.url, "Video", true);
+            add(data.url, "Video", true);
+
+            out.sort((a, b) => b.nowm - a.nowm);
+
+            const total = {}, seen = {};
+            out.forEach(o => total[o.label] = (total[o.label] || 0) + 1);
+            out.forEach(o => {
+                if (total[o.label] > 1) { seen[o.label] = (seen[o.label] || 0) + 1; o.label += ` (Server ${seen[o.label]})`; }
+            });
+            return out;
+        }
+
+        function extractMeta(data) {
+            const m = data.meta || data.data?.meta || data.data || data;
+            return {
+                title: m.title || m.desc || m.description || "Video TikTok",
+                thumb: m.thumbnail || m.cover || m.origin_cover || m.thumb || ""
+            };
+        }
+
+        async function fetchBlob(url) {
+            const res = await fetch(url);
+            if (!res.ok) throw new Error("HTTP " + res.status);
+            return res.blob();
+        }
+
+        function saveBlob(blob, filename) {
+            const a = document.createElement("a");
+            a.href = URL.createObjectURL(blob);
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            setTimeout(() => URL.revokeObjectURL(a.href), 10000);
+        }
+
+        async function directDownload(btn, url, filename) {
+            const original = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = `${spinner}<span>Mengunduh...</span>`;
+            try {
+                let blob;
+                try { blob = await fetchBlob(url); }
+                catch { blob = await fetchBlob(`/api/proxy?url=${encodeURIComponent(url)}`); }
+                saveBlob(blob, filename);
+                btn.innerHTML = "Selesai diunduh";
+            } catch {
+                window.open(url, "_blank");
+                btn.innerHTML = "Dibuka di tab baru";
+            }
+            setTimeout(() => { btn.innerHTML = original; btn.disabled = false; }, 2500);
+        }
+
+        function renderResult(box, p, { title, thumb, items, kind }) {
+            const ext = kind === "image" ? "jpg" : "mp4";
+            const preview = kind === "video" && !thumb
+                ? `<video src="${esc(items[0].url)}" controls playsinline class="w-full max-h-80 rounded-xl border border-zinc-800 bg-black"></video>`
+                : thumb ? `<div class="relative overflow-hidden rounded-xl border border-zinc-800">
+            <img src="${esc(thumb)}" alt="Pratinjau" referrerpolicy="no-referrer" class="w-full h-52 object-cover">
+            <div class="absolute inset-0 bg-gradient-to-t from-zinc-950 via-transparent"></div>
+            <p class="absolute bottom-3 left-3 right-3 text-xs font-medium text-zinc-100 line-clamp-2">${esc(title)}</p>
+          </div>` : "";
+
+            box.innerHTML = `
+        <div class="pt-4 border-t border-zinc-800 space-y-3">
+          ${preview}
+          <div id="dlList" class="space-y-2"></div>
+        </div>`;
+
+            const list = box.querySelector("#dlList");
+            items.forEach((it, i) => {
+                const b = document.createElement("button");
+                b.type = "button";
+                b.className = (i === 0
+                    ? "bg-white text-zinc-900 hover:bg-zinc-200"
+                    : "bg-zinc-800 text-zinc-200 hover:bg-zinc-700") +
+                    " w-full flex items-center justify-center gap-2 rounded-xl py-3 text-sm font-semibold transition disabled:opacity-70";
+                b.innerHTML = `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>Unduh ${esc(it.label)}`;
+                b.onclick = () => directDownload(b, it.url, `${p}-${Date.now()}${items.length > 1 ? "-" + (i + 1) : ""}.${ext}`);
+                list.appendChild(b);
+            });
+        }
+
+        form.addEventListener("submit", async e => {
+            e.preventDefault();
+            const p = platform, box = results[p];
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = `<span class="inline-flex items-center gap-2">${spinner}Memproses...</span>`;
+            box.innerHTML = "";
+
+            try {
+                const res = await fetch(p === "tiktok" ? "/api/download" : "/api/instagram", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ url: urlInput.value.trim() })
+                });
+                const data = await res.json();
+
+                if (!data.success) return notice(box, "Gagal mengambil media. Pastikan link yang dimasukkan benar.");
+
+                if (p === "tiktok") {
+                    const items = extractTikTok(data);
+                    if (!items.length) return notice(box, "Link video tidak ditemukan di respons server.", "amber");
+                    const { title, thumb } = extractMeta(data);
+                    renderResult(box, p, { title, thumb, items, kind: "video" });
+                } else {
+                    const medias = (data.medias || data.data?.medias || []).filter(m => m?.url);
+                    if (!medias.length) return notice(box, "Media Instagram tidak tersedia.", "amber");
+                    const items = medias.map((m, i) => ({
+                        url: m.url,
+                        label: medias.length > 1 ? `${m.type === "video" ? "video" : "gambar"} ${i + 1}` : (m.type === "video" ? "video" : "gambar"),
+                        nowm: true
+                    }));
+                    const first = medias[0];
+                    renderResult(box, p, {
+                        title: "Instagram",
+                        thumb: first.type === "image" ? first.url : (first.thumbnail || ""),
+                        items,
+                        kind: first.type === "image" ? "image" : "video"
+                    });
+                }
+            } catch (err) {
+                notice(box, "Gagal terhubung ke server. Silakan coba lagi nanti.");
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = "Cari Media";
+            }
+        });
+    </script>
 </body>
 
 </html>

@@ -9,9 +9,7 @@ const app = express();
 
 app.use(express.json());
 
-app.get("/", (req, res) => {
-    res.sendFile(path.join(__dirname, "index.html"));
-});
+app.use(express.static(path.join(__dirname, "public")));
 
 const UA =
     "Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 Chrome/120 Mobile Safari/537.36";
@@ -94,7 +92,6 @@ function createHandler(platform, envName) {
 app.post("/api/download", createHandler("tiktok", "SAVEAPI_KEY"));
 app.post("/api/instagram", createHandler("instagram", "INSTAGRAM_API_KEY"));
 
-// Proxy unduhan (untuk HP). Hanya domain CDN yang diizinkan.
 const ALLOWED_HOSTS = [
     "tiktokcdn.com", "tiktokcdn-us.com", "tiktokv.com", "tiktokv.us",
     "byteoversea.com", "ibytedtos.com", "muscdn.com",
@@ -128,7 +125,6 @@ app.get("/api/proxy", async (req, res) => {
     }
 });
 
-// listen hanya di lokal, bukan di Vercel
 if (!process.env.VERCEL) {
     const PORT = process.env.PORT || 3000;
     app.listen(PORT, () => {
